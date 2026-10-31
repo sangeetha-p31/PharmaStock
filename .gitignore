@@ -1,0 +1,17 @@
+# Ignore the local medicine database
+
+pharmastock.db
+
+# Ignore Python cache files
+
+**pycache**/
+*.pyc
+
+# Ignore virtual environments
+
+venv/
+.venv/
+
+# Ignore environment variable files
+
+.env
