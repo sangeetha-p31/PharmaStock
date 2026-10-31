@@ -1,26 +1,14 @@
 name: PharmaStock Docker CI
 
-'on':
-push:
-branches:
-- main
-pull_request:
-branches:
-- main
+'on': [push]
 
 jobs:
-build:
-runs-on: ubuntu-latest
-steps:
-- name: Checkout source code
-uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
-  - name: Set up Docker Buildx
-    uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        run: docker build -t pharmastock .
 
-  - name: Build Docker image
-    uses: docker/build-push-action@v6
-    with:
-      context: .
-      push: false
-      tags: pharmastock:latest
