@@ -253,6 +253,8 @@ STYLE = """
     tbody tr { transition: background .15s; }
     tbody tr:hover { background: #f9fcfb; }
 
+    .sl-no { color: #000; font-weight: bold; }
+
     .med-name { display: inline-flex; align-items: center; gap: 12px; font-weight: 600; background-color: #d1fae5; color: #065f46; padding: 8px 12px; border-radius: 8px; }
     .med-icon {
         width: 38px; height: 38px; border-radius: 10px;
@@ -275,8 +277,8 @@ STYLE = """
     .badge.warning { background: var(--orange-soft); color: var(--orange); }
     .badge.available { background: var(--primary-soft); color: var(--primary-dark); }
 
-    /* ---------- edit dropdown ---------- */
-    details.edit { position: relative; }
+    /* ---------- edit (expands inside the row, never floats) ---------- */
+    details.edit { position: static; min-width: 110px; }
     details.edit summary {
         list-style: none; cursor: pointer; display: inline-block;
         background: var(--blue-soft); color: var(--blue);
@@ -288,10 +290,10 @@ STYLE = """
     details.edit[open] summary { background: var(--blue); color: white; }
 
     .edit-form {
-        position: absolute; right: 0; top: 48px; z-index: 5;
-        width: 260px; background: white; padding: 18px;
-        border-radius: 14px; border: 1px solid var(--line);
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+        position: static;
+        width: 230px; margin-top: 12px; padding: 16px;
+        background: white; border-radius: 14px; border: 1px solid var(--line);
+        box-shadow: var(--shadow);
         animation: slide .2s ease;
     }
     .edit-form div { margin-bottom: 12px; }
@@ -336,7 +338,6 @@ STYLE = """
         .add-form { grid-template-columns: 1fr; }
         .search-form input { width: 100%; }
         .brand span { display: none; }
-        .edit-form { right: auto; left: 0; }
     }
 </style>
 """
@@ -454,78 +455,113 @@ HTML = """
                         <th>Quantity</th>
                         <th>Expiry Date</th>
                         <th>Min. Stock</th>
-                        <th>Status</th>
+                        <th>Stock Status</th>
+                        <th>Expiry Status</th>
                         <th>Edit</th>
                         <th>Delete</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                {% for medicine in medicines %}
-                    {% set ratio = [100, (medicine['quantity'] / ([medicine['minimum_stock'] * 2, 1]|max) * 100)|int]|min %}
-                    <tr>
-                        <td style="color: #000000; font-weight: bold;">{{ loop.index }}</td>
-                        <td>
-                            <div class="med-name">
-                                <div class="med-icon">💊</div>
-                                {{ medicine['name'] }}
-                            </div>
-                        </td>
-                        <td>
-                            <strong>{{ medicine['quantity'] }}</strong>
-                            <div class="stock-bar">
-                                <span style="width: {{ ratio }}%;
-                                    background: {% if medicine['quantity'] <= medicine['minimum_stock'] %}#e03131{% elif ratio < 70 %}#f59f00{% else %}#12b886{% endif %};">
-                                </span>
-                            </div>
-                        </td>
-                        <td>{{ medicine['expiry'] }}</td>
-                        <td>{{ medicine['minimum_stock'] }}</td>
-                        <td>
-                            {% if medicine['expiry'] < today %}
-                                <span class="badge expired">Expired</span>
-                            {% elif medicine['expiry'] <= expiry_limit %}
-                                <span class="badge warning">Expiring Soon</span>
-                            {% elif medicine['quantity'] <= medicine['minimum_stock'] %}
-                                <span class="badge low">Low Stock</span>
-                            {% else %}
-                                <span class="badge available">Available</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <details class="edit">
-                                <summary>✏️ Edit</summary>
-                                <form class="edit-form" action="/edit/{{ medicine['id'] }}" method="post">
-                                    <div>
-                                        <label>Quantity</label>
-                                        <input type="number" name="quantity" value="{{ medicine['quantity'] }}" min="0" required>
-                                    </div>
-                                    <div>
-                                        <label>Expiry Date</label>
-                                        <input type="date" name="expiry" value="{{ medicine['expiry'] }}" required>
-                                    </div>
-                                    <div>
-                                        <label>Minimum Stock</label>
-                                        <input type="number" name="minimum_stock" value="{{ medicine['minimum_stock'] }}" min="0" required>
-                                    </div>
-                                    <button type="submit">Update Details</button>
+                    {% for medicine in medicines %}
+                        {% set ratio = [100, (medicine['quantity'] / ([medicine['minimum_stock'] * 2, 1]|max) * 100)|int]|min %}
+
+                        <tr>
+                            <td class="sl-no">{{ loop.index }}</td>
+
+                            <td>
+                                <div class="med-name">
+                                    <div class="med-icon">💊</div>
+                                    {{ medicine['name'] }}
+                                </div>
+                            </td>
+
+                            <td>
+                                <strong>{{ medicine['quantity'] }}</strong>
+                                <div class="stock-bar">
+                                    <span style="
+                                        width:{{ ratio }}%;
+                                        background:
+                                        {% if medicine['quantity'] <= medicine['minimum_stock'] %}#e03131
+                                        {% elif ratio < 70 %}#f59f00
+                                        {% else %}#12b886{% endif %};
+                                    "></span>
+                                </div>
+                            </td>
+
+                            <td>{{ medicine['expiry'] }}</td>
+                            <td>{{ medicine['minimum_stock'] }}</td>
+
+                            <td>
+                                {% if medicine['quantity'] <= medicine['minimum_stock'] %}
+                                    <span class="badge low">Low Stock</span>
+                                {% else %}
+                                    <span class="badge available">Available</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if medicine['expiry'] < today %}
+                                    <span class="badge expired">Expired</span>
+                                {% elif medicine['expiry'] <= expiry_limit %}
+                                    <span class="badge warning">Expiring Soon</span>
+                                {% else %}
+                                    <span class="badge available">Not Expired</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <details class="edit">
+                                    <summary>✏️ Edit</summary>
+
+                                    <form class="edit-form"
+                                          action="/edit/{{ medicine['id'] }}"
+                                          method="post">
+
+                                        <div>
+                                            <label>Quantity</label>
+                                            <input type="number" name="quantity"
+                                                   value="{{ medicine['quantity'] }}" min="0" required>
+                                        </div>
+
+                                        <div>
+                                            <label>Expiry Date</label>
+                                            <input type="date" name="expiry"
+                                                   value="{{ medicine['expiry'] }}" required>
+                                        </div>
+
+                                        <div>
+                                            <label>Minimum Stock</label>
+                                            <input type="number" name="minimum_stock"
+                                                   value="{{ medicine['minimum_stock'] }}" min="0" required>
+                                        </div>
+
+                                        <button type="submit">Update Details</button>
+                                    </form>
+                                </details>
+                            </td>
+
+                            <td>
+                                <form action="/delete/{{ medicine['id'] }}"
+                                      method="post"
+                                      onsubmit="return confirm('Delete this medicine?');">
+                                    <button class="btn-delete" type="submit">🗑 Delete</button>
                                 </form>
-                            </details>
-                        </td>
-                        <td>
-                            <form action="/delete/{{ medicine['id'] }}" method="post"
-                                  onsubmit="return confirm('Delete this medicine?');">
-                                <button class="btn-delete" type="submit">🗑 Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="8" class="empty">
-                            <span class="big">🩺</span>
-                            {% if search %}No medicines found for "{{ search }}".{% else %}No medicines yet. Add your first one above!{% endif %}
-                        </td>
-                    </tr>
-                {% endfor %}
+                            </td>
+                        </tr>
+
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="empty">
+                                <span class="big">🩺</span>
+                                {% if search %}
+                                    No medicines found for "{{ search }}".
+                                {% else %}
+                                    No medicines yet. Add your first one above!
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -533,6 +569,17 @@ HTML = """
 
     <p class="footer">PharmaStock — Educational Project</p>
 </div>
+
+<script>
+    // Remove ?message=... from the address bar so the banner doesn't come back on refresh.
+    (function () {
+        var url = new URL(window.location.href);
+        if (url.searchParams.has("message")) {
+            url.searchParams.delete("message");
+            window.history.replaceState({}, "", url.pathname + url.search);
+        }
+    })();
+</script>
 </body>
 </html>
 """
@@ -738,4 +785,4 @@ def delete_medicine(medicine_id):
 
 if __name__ == "__main__":
     initialize_database()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
